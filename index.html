@@ -1,0 +1,203 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet"><title>Circular Law Lab – Close the Loop</title>
+<style>
+:root{--g:#1fa36a;--y:#ffd23f;--o:#ff8c42;--k:#23403a}*{box-sizing:border-box}
+body{margin:0;font:15px 'Fredoka',system-ui,sans-serif;color:var(--k);background:#d9f7e4 radial-gradient(circle at 12px 12px,#b9ebcd 3px,transparent 4px) 0 0/34px 34px}
+header{background:linear-gradient(90deg,var(--g),#37c98b);color:#fff;padding:10px 14px;font-size:16px;font-weight:600;border-bottom:4px solid #168a58;position:sticky;top:0;z-index:5}
+main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(320px,1fr);gap:12px;padding:12px;max-width:1300px;margin:auto}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.c{background:#fff;border:3px solid var(--k);border-radius:20px;padding:12px;margin-bottom:12px;box-shadow:0 5px 0 #23403a33}
+button{cursor:pointer;border:3px solid var(--k);border-radius:14px;padding:6px 12px;background:var(--y);color:var(--k);font:inherit;font-weight:600;margin:3px;box-shadow:0 4px 0 var(--k);transition:.1s}
+button:hover{transform:translateY(-2px)}button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--k)}
+button.a{background:#fff}button:disabled{opacity:.4;cursor:not-allowed;transform:none}
+input,select{font:inherit;border:3px solid var(--k);border-radius:12px;padding:5px 9px;background:#fffdf0}
+.hero{text-align:center}.hero h1{font-size:40px;margin:4px;color:var(--g);animation:w 2.4s infinite}
+@keyframes w{50%{transform:rotate(-2deg) scale(1.05)}}
+.code{background:var(--y);border:3px solid var(--k);border-radius:12px;padding:0 12px;letter-spacing:6px;font-size:30px}
+.pl{background:#eefbe9;border-radius:12px;padding:6px 10px;margin:5px 0}.wait{background:#fff3c4;border-radius:10px;padding:6px}
+.bar{height:14px;background:#e4e4d6;border:2px solid var(--k);border-radius:8px;position:relative;margin-bottom:4px}.bar i{display:block;height:100%;border-radius:5px}.bar b{position:absolute;top:-5px;width:3px;height:20px;background:var(--k)}
+.p{display:inline-block;padding:1px 9px;border-radius:12px;background:#ffeab0;border:2px solid var(--k);margin:2px;font-size:13px}
+#modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:9}
+#mb{background:#fff;border:4px solid var(--k);border-radius:22px;padding:16px;max-width:560px;width:92%;max-height:88vh;overflow:auto;animation:pop .25s}
+@keyframes pop{from{transform:scale(.7)}}
+.tip{background:#e3f4ff;border-radius:12px;padding:6px 10px}
+#toast{position:fixed;left:8px;right:8px;bottom:10px;max-width:520px;margin:auto;background:#fff9d6;border:3px solid var(--k);border-radius:16px;padding:8px 12px;z-index:8;transform:translateY(150%);transition:.4s;pointer-events:none}#toast.show{transform:none}
+.k{border:3px solid var(--g);border-radius:12px;padding:6px;margin:3px;display:inline-block;width:150px;vertical-align:top;font-size:13px;background:#f3fff3}
+.w span{display:inline-block;width:27px;height:22px;text-align:center;border:2px solid #b33;font-size:11px;line-height:20px}
+table{border-collapse:collapse;width:100%}td,th{border:2px solid #cfe3d6;padding:4px;text-align:center}
+</style></head><body>
+<header id="hd">Circular Law Lab – Close the Loop</header><main id="app"></main>
+<div id="toast"></div><div id="modal"><div id="mb"></div></div>
+<script src="config.js"></script>
+<script>
+let RNG=Math.random;function seedRng(s){RNG=()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const $=id=>document.getElementById(id),rnd=n=>RNG()*n|0,sh=a=>{a=[...a];for(let i=a.length;i--;){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+// ===== DỮ LIỆU =====
+const ROLES=[['Nhà sản xuất','🏭','#2e8b57',10,1,0+2,0,'Thiết kế dễ sửa: +5♻. Yếu: ≥3 SP Hỏng cuối vòng → −5⚖'],
+['Nhà bán lẻ','🏪','#3b7dd8',12,0,1,0,'Bán kèm thu hồi: +2♥. Yếu: phụ thuộc người khác để sửa/tân trang'],
+['Đơn vị sửa chữa','🔧','#7a4bb5',8,3,0,0,'Mỗi lần sửa giảm 1 chi phí. Yếu: không tự sản xuất'],
+['Đơn vị tân trang','🔄','#e8892b',9,1,1,2,'Tân trang & bán lại: +5₫ +5♻ +2♥. Yếu: xử lý sai thẻ pháp luật → +1⚠'],
+['Đơn vị tái chế','♻️','#17a28a',10,0,2,0,'Mỗi lần tái chế +1 vật liệu. Yếu: chuyển thẳng SP còn sửa được sang tái chế → không có Vòng lặp'],
+['Nền tảng tuần hoàn','🔗','#d6457f',10,1,1,1,'Kết nối 2 bên: +3₫ +3♥ +2♻. Yếu: không tự sản xuất/tái chế']];
+const INC=[{t:1},0,{r:1},{n:1},{t:1},0],RN=['THIẾT KẾ','BÁN','SỬ DỤNG','THU HỒI','KHỦNG HOẢNG PHÁP LÝ'];
+const T=[['Điện thoại','📱',6,2],['Laptop','💻',8,3],['Tai nghe','🎧',4,1],['Pin','🔋',3,1]];
+const TG=[['dễ sửa','pin xuống cấp','màn hình hỏng','dữ liệu chưa xử lý','linh kiện khan hiếm','thiết kế khó sửa'],['dễ nâng cấp','pin chai','bàn phím hỏng','dữ liệu còn lưu','thiếu linh kiện','máy cũ giá trị cao'],['pin xuống cấp','một bên không hoạt động','khó tháo pin','còn tốt, muốn đổi mới','thiếu linh kiện','dễ tân trang'],['còn dùng được','suy giảm dung lượng','cần xử lý đặc biệt','thu hồi được vật liệu','khó kiểm tra chất lượng','cần thay linh kiện']];
+const INIT=[[0,0],[1,0],[2,0],[0,1],[3,0],[1,1]];
+const ACT=[['Thiết kế dễ sửa',3,{cir:5,easy:1}],['Thiết kế dễ thay pin',3,{easy:1,imp:2}],['Thiết kế mô-đun',4,{cir:5,easy:1}],['Kéo dài vòng đời',3,{imp:5}],['Trạm sửa chữa',2,{r:2}],['Sửa nhanh',1,{r:1,disc:1}],['Linh kiện thay thế',2,{mat:2}],['Sửa chữa cộng đồng',2,{imp:2}],['Đổi cũ lấy mới',2,{loop:1}],['Thị trường đồ cũ',1,{fin:3}],['Chia sẻ thiết bị',2,{imp:5}],['Cho thuê thay vì bán',3,{cir:5}],['Tân trang chính hãng',4,{cir:5,n:1,fin:3}],['Kiểm tra chất lượng',2,{qc:1,law:5}],['Bảo hành SP tân trang',3,{law:5,imp:3}],['Tân trang chuyên sâu',5,{cir:10}],['Điểm thu hồi',2,{t:2}],['Thu hồi tại cơ sở',2,{imp:3,t:1}],['Mạng lưới thu hồi',4,{t:3}],['Thu hồi đổi quà',2,{cir:3}],['Phân loại vật liệu',2,{mat:2}],['Tái chế hiệu quả',3,{mat:3,imp:3}],['Tái chế đúng quy trình',2,{law:5}],['Vật liệu quay lại',4,{mat:-3,cir:5,fin:3}]];
+const EV=[['Thiếu linh kiện','Chi phí sửa chữa +1 trong vòng này.',{rc:1}],['Pin xuống cấp','SP có pin: sửa thêm +1 chi phí.',{rcPin:1}],['Người tiêu dùng quay lại','Đơn vị sửa chữa +2₫.',{fixFin:2}],['Làn sóng đổi mới','Giá bán SP +1 trong vòng này.',{sell:1}],['Niềm tin hàng tân trang tăng','Bán tân trang +2₫.',{rv:2}],['Niềm tin suy giảm','Bán tân trang −2₫.',{rv:-2}],['Chi phí thu hồi tăng','Tái chế/thu hồi +1 chi phí.',{cc:1}],['Chương trình thu hồi cộng đồng','Ai thu hồi/tái chế trong vòng: +3♥ cuối vòng.',{colImp:1}],['Thiết bị hỏng hàng loạt','Mỗi người có 1 SP đang dùng → Hỏng.',{breakAll:1}],['Khan hiếm vật liệu','Tái chế nhận +2₫.',{recFin:2}],['Thị trường đồ cũ tăng','Bán tân trang/tái sử dụng +2₫.',{rv:2}],['Sự cố dữ liệu','Ai giữ SP còn dữ liệu rút 1 Thẻ Pháp luật.',{lawData:1}],['Kiểm tra chất lượng','Ai tân trang trong vòng mà chưa có thẻ KT chất lượng: −5⚖.',{qcCheck:1}],['Đối tác mới','Thuê dịch vụ không mất phí kết nối trong vòng.',{hf:1}],['Phí vận chuyển tăng','Thu hồi/tái chế +1 chi phí.',{cc:1}],['Ngày không rác','Ai không tạo rác trong vòng: +5♥.',{noWaste:1}],['Thiết kế mới','Sửa chữa nhận thêm +3♻.',{repCir:3}],['Thiếu nhân lực','Mỗi người chỉ 1 hành động.',{acts:1}],['Cơ hội đầu tư','Mỗi người được đầu tư 3₫ → +5♻ (1 lần).',{invest:1}],['Khủng hoảng rác thải','Thanh Khủng hoảng Rác thải +2.',{waste:2}],['Người dùng trả lại sản phẩm','Mỗi người có 1 SP đang dùng bị trả lại (Hỏng).',{breakAll:1}],['Linh kiện được tái sử dụng','Đơn vị sửa chữa +1 vật liệu.',{repMat:1}],['Cộng đồng chia sẻ','Ai có >2 SP: +2♥.',{share:1}],['Quy định mới','Tất cả rút 1 Thẻ Pháp luật.',{lawAll:1}]];
+// [tiêu đề, tình huống, phương án đúng, phương án sai, +⚖, +♥, −⚖, +⚠, phương án tệ nhất(tuỳ chọn)]
+const LAW=[['Dữ liệu trong điện thoại cũ','Thiết bị thu hồi còn dữ liệu cá nhân của chủ cũ.','Xử lý dữ liệu trước khi tân trang','Bán lại ngay',10,0,10,1,'Chuyển trách nhiệm cho người mua'],['Sản phẩm tân trang','Bán laptop tân trang nhưng chưa cung cấp đủ thông tin tình trạng.','Cung cấp đầy đủ thông tin cho người mua','Bán mà không nêu rõ',10,0,10,0],['Cam kết chất lượng','Sản phẩm quảng cáo "như mới" nhưng đã thay nhiều linh kiện.','Công khai rõ tình trạng','Giữ quảng cáo "như mới"',5,0,10,0],['Trách nhiệm thu hồi','Đưa SP ra thị trường nhưng chưa có phương án thu hồi.','Xây dựng cơ chế thu hồi đầy đủ','Bỏ qua thu hồi',5,0,10,0],['Sản phẩm hết khả năng sử dụng','Sản phẩm không còn sửa được.','Chuyển sang xử lý/tái chế phù hợp','Đưa lại thị trường như còn dùng tốt',5,0,10,0],['Pin','Pin cũ cần xử lý theo quy trình phù hợp.','Chuyển đúng đơn vị xử lý','Bỏ cùng rác thông thường',5,3,15,1],['Thông tin người tiêu dùng','Thu thập thông tin khách hàng để thu hồi.','Dùng đúng mục đích, cơ chế hợp lệ','Dùng cho mục đích khác',5,0,10,0],['Xóa dữ liệu','Nhận thiết bị cũ để chuyển giao.','Xử lý dữ liệu → kiểm tra → chuyển giao','Chuyển giao ngay',5,0,10,0],['Quảng cáo xanh','Quảng cáo "100% sản phẩm không tạo ra chất thải".','Sửa thành tuyên bố có căn cứ','Giữ nguyên',5,0,10,0],['Hợp đồng sửa chữa','Khách giao thiết bị cho đơn vị sửa chữa.','Xác định rõ phạm vi, chi phí, trách nhiệm','Thỏa thuận mơ hồ',5,0,5,0],['Linh kiện đã qua sử dụng','Dùng linh kiện cũ để sửa thiết bị.','Kiểm tra chất lượng và thông tin trước','Lắp ngay',5,0,5,0],['Bán lại thiết bị','Bán sản phẩm đã qua sử dụng.','Minh bạch tình trạng sản phẩm','Che giấu tình trạng',5,0,10,0],['Thu hồi qua bên thứ ba','Thuê nền tảng khác thu hồi sản phẩm.','Xác định rõ trách nhiệm các bên','Không có cơ chế rõ ràng',5,0,5,0],['Dữ liệu sau thu hồi','Thiết bị qua nhiều đơn vị, nguy cơ truy cập trái phép.','Có biện pháp kiểm soát dữ liệu','Không kiểm soát',5,0,10,0],['Sản phẩm lỗi','SP tân trang phát sinh lỗi sau khi bán.','Thực hiện trách nhiệm theo cam kết','Từ chối toàn bộ trách nhiệm',10,0,15,1],['Truy xuất nguồn gốc','Không xác định được linh kiện đến từ đâu.','Xây dựng cơ chế truy xuất','Tiếp tục dùng không kiểm tra',5,0,5,0],['Chất thải nguy hại','Một số bộ phận cần xử lý riêng.','Đưa đúng đơn vị xử lý','Xử lý tùy tiện',5,3,15,0],['Quyền của người tiêu dùng','Khách khiếu nại về sản phẩm tân trang.','Giải quyết minh bạch','Từ chối tiếp nhận',5,0,10,0],['Thông tin sản phẩm','Bán lại nhưng thông tin kỹ thuật không đầy đủ.','Cập nhật đầy đủ thông tin','Che giấu',5,0,10,0],['Thuê thiết bị','Người dùng thuê laptop thay vì mua.','Hợp đồng rõ quyền, nghĩa vụ, trách nhiệm','Hợp đồng không rõ',5,0,5,0],['Tái chế vật liệu','Đưa vật liệu tái chế vào sản xuất.','Kiểm soát chất lượng và nguồn vật liệu','Không kiểm soát',5,0,5,0],['Đối tác không tuân thủ','Đơn vị tái chế bạn thuê bị phát hiện xử lý sai.','Kiểm tra và thay đối tác','Tiếp tục hợp tác',5,0,15,1],['Thông tin minh bạch','Khách hỏi SP đã được tân trang bộ phận nào.','Cung cấp thông tin phù hợp','Từ chối',5,0,5,0],['Kiểm tra trước khi bán','Sản phẩm tân trang chưa được kiểm tra.','Kiểm tra trước khi bán','Bán ngay',5,0,10,1]];
+const OPP=[['Đối tác vàng',{free:1}],['Nhà đầu tư xanh (cần ♻≥40)',{fin:5}],['Khách hàng trung thành',{fin:3}],['Linh kiện dồi dào',{mat:2}],['Mạng lưới sửa chữa',{r:2}],['Mạng lưới thu hồi',{t:2}],['Thị trường tân trang',{n:2}],['Cộng đồng ủng hộ',{imp:5}],['Thiết kế thông minh',{cir:5}],['Tuân thủ tốt',{risk:-1}],['Vòng đời thứ hai',{n:1,rdisc:2}],['Đóng vòng hoàn hảo (SP ≥2 giai đoạn tuần hoàn)',{cir:5,imp:5}]];
+const SY={fin:'₫',cir:'♻',law:'⚖',imp:'♥',r:'🔧',t:'↩',n:'◆',mat:'▣',loop:'↻'},CK={r:'r',n:'n',c:'t'},SN={m:'Sản xuất',r:'Sửa chữa',n:'Tân trang',c:'Tái chế'};
+const NODES=[['d','THIẾT KẾ','🎨','#2e8b57',-90],['m','SẢN XUẤT','🏭','#3b7dd8',-45],['s','BÁN','🛒','#e8892b',0],['u','SỬ DỤNG','📲','#7a4bb5',45],['b','HỎNG','💥','#d33',90],['r','SỬA CHỮA','🔧','#17a2a2',135],['f','TÂN TRANG','🔄','#e8892b',180],['c','TÁI CHẾ','♻️','#3aa76d',225]];
+// ===== TIỆN ÍCH =====
+let G;const cur=()=>G.ps[G.i],cl=v=>Math.max(0,Math.min(100,v)),eff=p=>({fin:p.fin,cir:p.cir+5*p.loops,law:p.law-5*p.risk,imp:p.imp});
+const pn=x=>T[x.t][1]+' '+T[x.t][0]+' '+'ABCDEF'[x.v],log=s=>G.log.unshift(s);
+const fx=e=>Object.entries(e).map(([k,v])=>SY[k]?(v>0?'+':'')+v+SY[k]:k=='easy'?'SP dễ sửa':k=='disc'?'sửa −'+v:k=='rdisc'?'tân trang −'+v:k=='qc'?'KT chất lượng':k=='risk'?'bỏ '+-v+'⚠':'giao dịch miễn phí').join(' ');
+let MBseq=0,MOPEN=0,WHO=null;
+function modal(h,b){const w=WHO??(G&&G.i<G.ps.length?G.ps[G.i].id:-1);WHO=null;MBseq++;MOPEN=1;MB.who=w;MB.f=b.map(x=>x[1]);
+const can=!NET||(me>=0&&(w<0||w==me)),nm=w>=0&&G?G.ps[w].name:'';
+$('modal').style.display='flex';$('mb').innerHTML=(can?'':`<p class="wait">⏳ Đang chờ <b>${nm}</b> quyết định…</p>`)+h+'<div>'+b.map((x,i)=>`<button ${can?'':'disabled'} onclick="X('MB',${MBseq},${i})">${x[0]}</button>`).join('')+'</div>'}
+function MB(seq,i){if(seq!=MBseq||!MOPEN)return;MOPEN=0;$('modal').style.display='none';const f=MB.f[i];f&&f()}
+const say=m=>modal('<p>'+m+'</p>',[['OK']]),pick=(t,o)=>modal('<h3>'+t+'</h3>',[...o,['Hủy']]);
+function nextCard(k){const M={act:ACT,ev:EV,law:LAW,opp:OPP};if(!G.dk[k].length)G.dk[k]=sh(M[k]);return G.dk[k].pop()}
+function runQ(){G.q.length?G.q.shift()(runQ):render()}
+function gain(p,o){for(const k in o){const v=o[k];if(k=='fin')p.fin=Math.max(0,p.fin+v);else if(k=='cir'||k=='law'||k=='imp')p[k]=cl(p[k]+v);else if(k=='r'||k=='t'||k=='n')p.cap[k]=Math.max(0,p.cap[k]+v);else if(k=='mat')p.mat=Math.max(0,p.mat+v);else if(k=='loop'){p.loops+=v;p.cnt.cl+=v}else if(k=='risk')p.risk=Math.max(0,p.risk+v);else if(k=='easy'){G.prods.filter(x=>x.own==p.id&&'dmu'.includes(x.st)).forEach(x=>x.easy=1);if(p.role==0)p.cir=cl(p.cir+5)}else p[k]=(p[k]||0)+v}}
+const addWaste=n=>{G.waste=Math.min(10,G.waste+n);if(G.waste>=10)G.over=1};
+// ===== KHỞI TẠO =====
+let NET=0,me=-1,room='',seen=0,PT,LB='';const LEARN=new Set();
+const LS=(k,v)=>{try{if(v===undefined)return sessionStorage.getItem('cll_'+k);sessionStorage.setItem('cll_'+k,v)}catch(e){}};
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TIPS={m:['Hơn 80% tác động môi trường của sản phẩm được quyết định từ khâu thiết kế (ước tính của Ủy ban châu Âu) – thiết kế dễ sửa, dễ tháo là “đóng vòng” từ đầu!'],s:['Bán kèm phương án thu hồi giúp sản phẩm có đường quay lại – nền tảng của trách nhiệm mở rộng của nhà sản xuất (EPR).'],r:['Sửa chữa giữ gần như toàn bộ giá trị và vật liệu của sản phẩm nên thường được xếp trên tái chế trong thang ưu tiên “R”.','“Quyền sửa chữa” (Right to Repair) đang được nhiều nước thúc đẩy: linh kiện và tài liệu sửa phải sẵn có với giá hợp lý.'],n:['Tân trang ≠ “như mới”: người bán cần nói rõ tình trạng và bộ phận đã thay – nghĩa vụ cung cấp thông tin trung thực cho người tiêu dùng.'],c:['Tái chế thu lại vật liệu nhưng làm mất chức năng ban đầu của sản phẩm, nên là lựa chọn sau khi sửa/tân trang không còn khả thi.','Pin cũ cần được thu gom, xử lý riêng vì có thể gây nguy hại nếu bỏ chung rác sinh hoạt.'],w:['Theo Global E-waste Monitor 2024, năm 2022 thế giới thải khoảng 62 triệu tấn rác điện tử nhưng chỉ khoảng 1/5 được thu gom, tái chế chính thức.'],link:['Kinh tế tuần hoàn là một mạng lưới: nền tảng, đơn vị sửa chữa, tân trang, tái chế phải kết nối thì sản phẩm mới “đóng vòng”.'],law:['Luật Bảo vệ môi trường 2020 quy định EPR: nhà sản xuất, nhập khẩu có trách nhiệm thu gom/tái chế với một số nhóm sản phẩm, bao bì.','Dữ liệu cá nhân trên thiết bị cũ được bảo vệ (Nghị định 13/2023/NĐ-CP) – xóa dữ liệu trước khi chuyển giao là một phần của “đóng vòng”.']};
+const RT=['Vòng Thiết kế: quyết định ở đây định hình cả vòng đời – dễ sửa, dễ tháo, dễ nâng cấp.','Vòng Bán: bán kèm thu hồi hoặc cho thuê giúp sản phẩm có đường quay lại.','Vòng Sử dụng: kéo dài thời gian dùng là cách giảm rác hiệu quả nhất.','Vòng Thu hồi: ưu tiên Sửa → Tái sử dụng → Tân trang → Thu hồi → Tái chế.','Vòng Khủng hoảng pháp lý: trách nhiệm, dữ liệu và thông tin minh bạch đi theo sản phẩm.'];
+function tip(k){const a=TIPS[k];if(!a)return;LEARN.add(k);const t=$('toast');t.innerHTML='💡 <b>Bạn có biết?</b> '+a[Math.random()*a.length|0];t.className='show';clearTimeout(tip.t);tip.t=setTimeout(()=>t.className='',9000)}
+const F={svc,sell,trash,buy,invest,trade,connect,play,endTurn,MB};
+function apply(m){const p=m.p,f=m.f,a=m.a||[];if(!G||G.over||!F[f])return;
+if(f=='MB'){if(a[0]!=MBseq||!MOPEN||(p!=-2&&!(MB.who<0||MB.who==p)))return}else if(MOPEN||(p!=-2&&cur().id!=p))return;F[f](...a)}
+function X(f,...a){if(!NET)return apply({p:-2,f,a});api({op:'move',since:seen,m:{f,a}}).then(pull)}
+function pull(r){if(r&&r.ok)(r.moves||[]).forEach((m,k)=>{if(r.from+k==seen){seen++;apply(m)}})}
+const API=window.CLL_API||'api.php';let USER=null,TOK='';try{TOK=localStorage.getItem('cll_auth')||''}catch(e){}
+function diag(st,t,e){if(location.protocol=='file:')return'Bạn đang mở file trực tiếp (file://). Hãy mở qua https://tên-miền của host có PHP.';
+if(!st)return'Không gọi được '+API+' ('+((e&&e.message)||'mạng/CORS')+'). Kiểm tra: api.php đã tải lên cùng thư mục chưa? Nếu web ở GitHub Pages: sửa config.js trỏ tới host PHP và khai báo origins trong config.php.';
+return'Máy chủ trả về HTTP '+st+' (không phải JSON): '+t.replace(/<[^>]*>/g,' ').trim().slice(0,140)}
+async function api(o){let t='',st=0;try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({room,...o,auth:TOK})});st=r.status;t=await r.text();const j=JSON.parse(t);
+if(j.login){USER=null;TOK='';clearInterval(PT);NET=0;G=null;setTimeout(()=>loginView('Cần đăng nhập (phiên đã hết hạn)'),0)}return j}catch(e){return{ok:0,net:1,err:diag(st,t,e)}}}
+async function poll(){const r=await api({op:'poll',since:seen});$('hd').style.background=r.net?'#d33':'';if(!r.ok)return;me=r.me;if(r.started&&!G)begin(r.players,r.seed);if(G)pull(r);else lobby(r)}
+async function setup(){NET=0;G=null;clearInterval(PT);LB='';$('hd').style.background='';$('hd').textContent='♻️ Circular Law Lab – Close the Loop';
+if(TOK&&!USER){const r=await api({op:'whoami'});if(r.ok&&r.user)USER=r.user;else if(r.net)return loginView(r.err);else TOK=''}
+USER?menu():loginView()}
+function loginView(msg,reg){$('hd').textContent='♻️ Circular Law Lab – Đăng nhập';$('app').innerHTML=`<div class="c hero" style="grid-column:1/-1"><h1>♻️ Circular Law Lab</h1>${msg?`<p class="wait">${msg}</p>`:''}
+<p><input id="lu" placeholder="Tên đăng nhập" maxlength="20" autocapitalize="off"></p><p><input id="lp" type="password" placeholder="Mật khẩu"></p>
+${reg?`<p><input id="ln" placeholder="Tên hiển thị" maxlength="14"></p><button onclick="doAuth('register')">📝 Đăng ký</button>`:`<button onclick="doAuth('login')">🔑 Đăng nhập</button>`}
+<button class="a" onclick="loginView('',${!reg})">${reg?'Đã có tài khoản?':'Tạo tài khoản'}</button><hr><button class="a" onclick="local()">🖥️ Chơi chung 1 máy (không cần đăng nhập)</button><button class="a" onclick="pingSrv()">🩺 Kiểm tra kết nối máy chủ</button>
+<p><small>Tài khoản đầu tiên được tạo trên máy chủ sẽ là Quản trị (admin).</small></p></div>`}
+async function doAuth(op){const r=await api({op,u:$('lu').value,pw:$('lp').value,name:$('ln')?$('ln').value:''});if(!r.ok)return loginView(r.err,op=='register');TOK=r.token;try{localStorage.setItem('cll_auth',TOK)}catch(e){}USER=r.user;setup()}
+async function pingSrv(){let st=0,t='';try{const r=await fetch(API+(API.includes('?')?'&':'?')+'op=ping');st=r.status;t=await r.text();const j=JSON.parse(t);say(`✅ Máy chủ phản hồi. PHP ${j.php} · ghi dữ liệu: ${j.writable?'OK':'KHÔNG ĐƯỢC – đặt quyền thư mục data/'}`)}catch(e){say('❌ '+diag(st,t,e))}}
+function menu(){const isA=USER.role=='admin',host=isA||USER.role=='host';$('hd').textContent='♻️ Circular Law Lab';
+$('app').innerHTML=`<div class="c hero" style="grid-column:1/-1"><h1>♻️ Circular Law Lab</h1><p>Xin chào <b>${USER.name}</b> · ${{admin:'🛡️ Quản trị',host:'🎓 Quản trò',player:'🎮 Người chơi'}[USER.role]} <button class="a" onclick="logout()">Đăng xuất</button></p>
+${host?'<button onclick="mkRoom()">🎮 Tạo phòng online</button><br>':'<p><small>Nhập mã phòng do Quản trò cung cấp để vào chơi.</small></p>'}
+<input id="cd" placeholder="Mã phòng" maxlength="4" style="width:120px;text-transform:uppercase"><button class="a" onclick="joinRoom()">🚪 Vào phòng</button>${host?`<br><button class="a" onclick="admin()">⚙️ Quản lý phòng${isA?' & người dùng':''}</button>`:''}<hr><button class="a" onclick="local()">🖥️ Chơi chung 1 máy</button></div>`;
+const q=new URLSearchParams(location.search).get('room');if(q)$('cd').value=q.toUpperCase()}
+async function logout(){await api({op:'logout'});USER=null;TOK='';try{localStorage.removeItem('cll_auth')}catch(e){}setup()}
+function local(n=4){NET=0;const nm=['An','Bình','Chi','Dũng','Hà','Khôi'];$('app').innerHTML=`<div class="c" style="grid-column:1/-1"><h2>Chơi chung 1 máy</h2>Số người: <select onchange="local(+this.value)">${[2,3,4,5,6].map(x=>`<option ${x==n?'selected':''}>${x}</option>`)}</select>${Array.from({length:n},(_,i)=>`<p><input id="nm${i}" value="${nm[i]}" maxlength="14"> <select id="rl${i}">${ROLES.map((r,j)=>`<option value="${j}" ${j==i?'selected':''}>${r[1]} ${r[0]}</option>`)}</select></p>`).join('')}<button onclick="goLocal(${n})">▶ Bắt đầu</button><button class="a" onclick="setup()">← Quay lại</button></div>`}
+function goLocal(n){const L=[...Array(n)].map((_,i)=>({name:esc($('nm'+i).value||'Người '+(i+1)),role:+$('rl'+i).value}));if(new Set(L.map(x=>x.role)).size<n)return say('Mỗi người phải chọn một vai trò khác nhau.');begin(L,Date.now()%2e9)}
+async function mkRoom(){const r=await api({op:'create'});if(!r.ok)return say(r.err);room=r.code;enter()}
+function joinRoom(){room=$('cd').value.toUpperCase().trim();enter()}
+async function enter(){const r=await api({op:'join'});if(!r.ok)return say(r.err||'Không vào được phòng');NET=1;seen=0;G=null;me=r.me;LB='';lobby(r);clearInterval(PT);PT=setInterval(poll,1200)}
+function lobby(r){me=r.me;const k=JSON.stringify([r.players,me,r.mgr]);if(k==LB)return;LB=k;$('hd').textContent='Phòng '+room;
+$('app').innerHTML=`<div class="c" style="grid-column:1/-1"><h2>🏠 Phòng <span class="code">${room}</span></h2><p>Quản trò: <b>${r.owner}</b>. Mời bạn bè: nhập mã trên hoặc mở link <input readonly value="${location.origin+location.pathname}?room=${room}" onclick="this.select()" style="width:90%"></p>
+${r.players.map((p,i)=>`<div class="pl">${ROLES[p.role][1]} <b>${p.name}</b>${i==me?' (bạn)':''} – ${i==me?`<select onchange="api({op:'set',role:+this.value}).then(poll)">${ROLES.map((x,j)=>`<option value="${j}" ${j==p.role?'selected':''}>${x[0]}</option>`)}</select>`:ROLES[p.role][0]}${r.mgr&&i!=me?` <button class="a" onclick="api({op:'kick',i:${i}}).then(poll)">Loại</button>`:''}</div>`).join('')}
+${me<0?`<button onclick="api({op:'join'}).then(poll)">🙋 Tham gia chơi</button>`:''}
+${r.mgr?`<button ${r.players.length<2?'disabled':''} onclick="api({op:'start'}).then(poll)">▶ Bắt đầu (${r.players.length}/6 – khuyến nghị 4–6)</button><button class="a" onclick="if(confirm('Đóng phòng?'))api({op:'close'}).then(setup)">🗑 Đóng phòng</button>`:'<p>⏳ Chờ Quản trò bắt đầu…</p>'}<button class="a" onclick="leave()">← Rời</button></div>`}
+async function leave(){if(me>=0)await api({op:'leave'});setup()}
+const adm=o=>api(o).then(r=>r.ok?admin():say(r.err));
+async function admin(){const a=await api({op:'rooms'}),u=USER.role=='admin'?await api({op:'users'}):null;if(!a.ok)return say(a.err);
+$('app').innerHTML=`<div class="c" style="grid-column:1/-1"><h2>⚙️ Quản lý</h2><h3>Phòng chơi</h3><table><tr><th>Mã</th><th>Quản trò</th><th>Người</th><th>Trạng thái</th><th></th></tr>${a.rooms.map(x=>`<tr><td>${x.code}</td><td>${x.owner}</td><td>${x.players}</td><td>${x.started?'Đang chơi':'Chờ'}</td><td><button class="a" onclick="adm({op:'close',room:'${x.code}'})">Đóng</button></td></tr>`).join('')||'<tr><td colspan=5>Chưa có phòng</td></tr>'}</table>
+${u&&u.ok?`<h3>Người dùng</h3><label><input type="checkbox" ${u.open?'checked':''} onchange="api({op:'setopen',open:this.checked})"> Cho phép tự đăng ký (người mới mặc định là Người chơi)</label><table><tr><th>Tài khoản</th><th>Tên</th><th>Quyền</th><th></th></tr>${u.users.map(x=>`<tr><td>${x.u}</td><td>${x.name}</td><td><select onchange="adm({op:'setuser',target:'${x.u}',role:this.value})">${['player','host','admin'].map(r=>`<option ${r==x.role?'selected':''}>${r}</option>`)}</select></td><td><button class="a" onclick="resetPw('${x.u}')">Đặt lại MK</button><button class="a" onclick="if(confirm('Xóa ${x.u}?'))adm({op:'setuser',target:'${x.u}',del:1})">Xóa</button></td></tr>`).join('')}</table><p><small>player = chỉ vào phòng & chơi · host = tạo/quản lý phòng của mình · admin = toàn quyền.</small></p>`:''}<button class="a" onclick="setup()">← Quay lại</button></div>`}
+function resetPw(t){const p=prompt('Mật khẩu mới (≥6 ký tự) cho '+t);p&&api({op:'setuser',target:t,pw:p}).then(r=>say(r.ok?'Đã đổi mật khẩu.':r.err))}
+function begin(L,seed){seedRng(seed);MBseq=0;MOPEN=0;LEARN.clear();
+G={ps:[],prods:[],round:1,i:0,acts:2,waste:0,over:0,mod:{},log:[],q:[],cnt:{s:0,r:0,f:0,c:0},dk:{act:sh(ACT),ev:sh(EV),law:sh(LAW),opp:sh(OPP),prod:sh([...Array(24)].map((_,k)=>[k%4,k/4|0]).filter(x=>!INIT.some(y=>y[0]==x[0]&&y[1]==x[1])))}};
+L.forEach((l,i)=>{const r=l.role,R=ROLES[r];G.ps.push({id:i,name:l.name,role:r,fin:R[3],cir:20,law:60,imp:20,cap:{r:R[4],t:R[5],n:R[6]},mat:0,risk:0,loops:0,hand:[],disc:0,rdisc:0,qc:0,free:0,streak:0,inv:0,op:0,cnt:{}});newProd(i,INIT[r])});startRound()}
+function newProd(o,[t,v]){G.prods.push({t,v,st:'d',own:o,easy:0,loops:0,rc:T[t][3]+(v>4?1:0)})}
+// ===== VÒNG CHƠI =====
+function startRound(){const e=nextCard('ev'),M=G.mod=e[2];G.i=0;G.acts=M.acts?1:2;G.q=[];
+G.ps.forEach(p=>{p.cnt={cl:0,ref:0,col:0,w:0};p.op=0;gain(p,{fin:2});INC[p.role]&&gain(p,INC[p.role]);p.hand.push(nextCard('act'))});
+log(`— Vòng ${G.round}: ${RN[G.round-1]} · Sự kiện: ${e[0]}`);
+if(G.round==3)G.prods.forEach(x=>x.st=='u'&&(x.st='b'));
+if(M.breakAll)G.ps.forEach(p=>{const x=G.prods.find(x=>x.own==p.id&&x.st=='u');x&&(x.st='b')});
+if(M.waste)addWaste(M.waste);
+M.fixFin&&G.ps.filter(p=>p.role==2).forEach(p=>gain(p,{fin:2}));
+M.repMat&&G.ps.filter(p=>p.role==2).forEach(p=>gain(p,{mat:1}));
+M.share&&G.ps.forEach(p=>G.prods.filter(x=>x.own==p.id&&'dmub'.includes(x.st)).length>2&&gain(p,{imp:2}));
+G.ps.forEach(p=>{if(G.round==5||M.lawAll||(M.lawData&&G.prods.some(x=>x.own==p.id&&/dữ liệu/.test(TG[x.t][x.v])&&x.st!='x'&&x.st!='w')))G.q.push(n=>lawDraw(p,n))});
+WHO=-1;modal(`<h3>Vòng ${G.round}/5 – ${RN[G.round-1]}</h3><p><b>THẺ SỰ KIỆN: ${e[0]}</b><br>${e[1]}</p><p class="tip">💡 ${RT[G.round-1]}</p>${G.round==3?'<p>⚠ Mọi sản phẩm đang SỬ DỤNG bị HỎNG.</p>':''}${G.round==5?'<p>Mỗi người rút 1 Thẻ Pháp luật.</p>':''}`,[['Bắt đầu',runQ]])}
+function endTurn(){if(++G.i>=G.ps.length)return endRound();G.acts=G.mod.acts?1:2;render()}
+function endRound(){const m=G.mod;G.q=[];
+G.ps.forEach(p=>{if(p.role==0&&G.prods.filter(x=>x.own==p.id&&x.st=='b').length>=3){gain(p,{law:-5});log(p.name+': ≥3 SP Hỏng → −5⚖')}
+if(m.qcCheck&&p.cnt.ref){p.qc?p.qc=0:(gain(p,{law:-5}),log(p.name+' tân trang không kiểm tra CL: −5⚖'))}
+if(m.noWaste&&!p.cnt.w)gain(p,{imp:5});if(m.colImp&&p.cnt.col)gain(p,{imp:3});
+p.streak=p.cnt.cl?p.streak+1:0;if(p.streak>=2){p.streak=0;G.q.push(n=>drawOpp(p,n))}});
+G.q.push(()=>{if(G.over||G.round>=5)endGame();else{G.round++;startRound()}});runQ()}
+// ===== THẺ =====
+function lawDraw(p,next,k){const c=nextCard('law'),o=[[c[2],1],[c[3],0]];if(c[8])o.push([c[8],2]);
+WHO=p.id;modal(`<h3>⚖ THẺ PHÁP LUẬT – ${c[0]}</h3><p><b>${p.name}</b>: ${c[1]}</p>`,sh(o).map((x,i)=>[String.fromCharCode(65+i)+'. '+x[0],()=>{
+const ok=x[1]==1;ok?gain(p,{law:c[4],imp:c[5]}):gain(p,{law:-(x[1]==2?15:c[6]),risk:c[7]||(x[1]==2?1:0)});if(!ok&&k=='n'&&p.role==3)gain(p,{risk:1});
+tip('law');log(`${p.name} ⚖ ${c[0]}: ${ok?'đúng':'sai'}`);
+WHO=p.id;modal(`<h3>${ok?'✅ Phương án phù hợp':'❌ Rủi ro pháp lý'}</h3><p>${ok?`+${c[4]}⚖ ${c[5]?'+'+c[5]+'♥':''}`:`−${x[1]==2?15:c[6]}⚖ ${c[7]||x[1]==2?'+1⚠':''}`}</p><p><b>Đáp án:</b> ${c[2]}</p><p><i>LEGAL NOTE: Khi thiết bị đi qua vòng tuần hoàn, nghĩa vụ về thông tin, dữ liệu, an toàn và trách nhiệm sau bán đi theo sản phẩm; pháp luật là một phần của quyết định kinh doanh.</i></p>`,[['Tiếp tục',next]])}]))}
+function drawOpp(p,next){const c=nextCard('opp');let e=c[1],t='';
+if(c[0][0]=='N'&&eff(p).cir<40){e={};t=' (chưa đủ điều kiện)'}
+if(c[0][0]=='Đ'&&c[0][1]=='ó'&&!G.prods.some(x=>x.own==p.id&&x.loops>=2)){e={};t=' (chưa có SP đủ 2 giai đoạn)'}
+gain(p,e);log(`${p.name} 🎁 ${c[0]}`);WHO=p.id;modal(`<h3>🎁 THẺ CƠ HỘI</h3><p><b>${p.name}</b>: ${c[0]}<br>${fx(e)||'—'}${t}</p>`,[['OK',next]])}
+function play(i){const p=cur(),c=p.hand[i];if(G.acts<1)return say('Hết hành động.');if(p.fin<c[1])return say('Không đủ tài chính.');if(c[2].mat<0&&p.mat<-c[2].mat)return say('Không đủ vật liệu.');
+p.fin-=c[1];gain(p,c[2]);p.hand.splice(i,1);G.acts--;log(`${p.name} dùng thẻ ${c[0]}`);render()}
+// ===== HÀNH ĐỘNG =====
+const can=(q,k)=>k=='m'?q.role==0:q.cap[CK[k]]>0;
+function cost(o,x,k,pv){const m=G.mod;return Math.max(0,k=='r'?x.rc+(m.rc||0)+(m.rcPin&&/pin/i.test(T[x.t][0]+TG[x.t][x.v])?1:0)-(pv.role==2?1:0)-(x.easy?1:0)-o.disc:k=='n'?3-o.rdisc:k=='c'?1+(m.cc||0):1)}
+const fee=(o,q)=>q!=o&&!o.free&&!G.mod.hf?1:0;
+function svc(id,k,via,ow){const x=G.prods[id],o=ow||cur();if(G.acts<1)return say('Hết hành động trong lượt.');
+const L=G.ps.filter(q=>can(q,k)&&q!=via&&(!via||q!=o)).sort((a,b)=>(b==o)-(a==o));if(!L.length)return say('Không ai có năng lực '+SN[k]+'. Hãy thuê người khác hoặc đầu tư năng lực.');
+const run=q=>{const pay=cost(o,x,k,q)+fee(o,q);if(o.fin<pay)return say(o.name+' không đủ '+pay+'₫.');
+o.fin-=pay;q!=o&&(q.fin+=pay);k!='m'&&q.cap[CK[k]]--;q!=o&&o.free&&!G.mod.hf&&(o.free=0);const m=G.mod;x.loops+=k!='m';
+if(k=='m')x.st='m';
+if(k=='r'){o.disc=0;x.st='u';gain(o,{cir:8+(m.repCir||0),imp:4,loop:1});G.cnt.r++}
+if(k=='n'){o.rdisc=0;x.st='u';o.cnt.ref++;q.cnt.ref++;gain(o,{fin:Math.ceil(T[x.t][2]*.7)+(m.rv||0),cir:10,imp:5,loop:1});q.role==3&&gain(q,{fin:5,cir:5,imp:2});G.cnt.f++}
+if(k=='c'){x.st='x';q.cnt.col++;o.cnt.col++;gain(o,{fin:m.recFin||0,mat:2,cir:5,imp:2,loop:q.role==4&&x.rc<=2?0:1});q.role==4&&gain(q,{mat:1});G.cnt.c++}
+if(via){tip('link');gain(via,{fin:3,cir:2,imp:3});if(!via.op){via.op=1;G.q.push(n=>drawOpp(via,n))}}
+tip(k);log(`${SN[k]} ${pn(x)} (${o.name}${q!=o?' ← '+q.name:''}${via?', kết nối: '+via.name:''}) −${pay}₫`);G.acts--;
+if(k=='n'||k=='c')G.q.push(n=>lawDraw(q,n,k));runQ()};
+L.length==1?run(L[0]):pick(SN[k]+' '+pn(x)+' – chọn đơn vị thực hiện',L.map(q=>[`${q.name} (${ROLES[q.role][0]}) ${cost(o,x,k,q)+fee(o,q)}₫`,()=>run(q)]))}
+function sell(id){const x=G.prods[id],o=cur();if(G.acts<1)return say('Hết hành động.');x.st='u';G.cnt.s++;
+gain(o,{fin:T[x.t][2]+(G.mod.sell||0)+(o.role==1?1:0)});if(o.role==1&&o.cap.t>0)gain(o,{imp:2});if(x.easy&&o.role==0)gain(o,{imp:2});
+tip('s');log(`${o.name} bán ${pn(x)}`);G.acts--;render()}
+function trash(id){const x=G.prods[id],o=cur();if(G.acts<1)return say('Hết hành động.');x.st='w';tip('w');addWaste(1);gain(o,{imp:-3});o.cnt.w=1;log(`🗑 ${o.name} bỏ ${pn(x)} → RÁC (−3♥)`);G.acts--;render()}
+function buy(){const o=cur();if(G.acts<1||o.fin<3)return say('Cần 1 hành động và 3₫.');if(!G.dk.prod.length)return say('Hết thẻ Sản phẩm.');o.fin-=3;const c=G.dk.prod.pop();newProd(o.id,c);log(`${o.name} nhận ${pn(G.prods.at(-1))}`);G.acts--;render()}
+function invest(){const o=cur();if(G.acts<1||o.fin<3)return say('Cần 1 hành động và 3₫.');const go=f=>{o.fin-=3;f();G.acts--;render()};
+pick('Đầu tư 3₫',[['+1 Năng lực Sửa chữa',()=>go(()=>o.cap.r++)],['+1 Năng lực Thu hồi',()=>go(()=>o.cap.t++)],['+1 Năng lực Tân trang',()=>go(()=>o.cap.n++)],...(G.mod.invest&&!o.inv?[['Đầu tư xanh (Sự kiện): +5♻',()=>go(()=>{o.inv=1;gain(o,{cir:5})})]]:[])])}
+function trade(){const o=cur(),O=G.ps.filter(q=>q!=o);pick('Giao dịch (không tốn hành động) – gửi cho:',O.map(q=>[q.name,()=>pick('Trao cho '+q.name,[['1₫',()=>o.fin>0&&(o.fin--,q.fin++,log(`${o.name} → ${q.name}: 1₫`),render())],['2₫',()=>o.fin>1&&(o.fin-=2,q.fin+=2,log(`${o.name} → ${q.name}: 2₫`),render())],['1 vật liệu',()=>o.mat>0&&(o.mat--,q.mat++,render())],['1 sản phẩm',()=>pick('Chọn sản phẩm',G.prods.map((x,i)=>[x,i]).filter(([x])=>x.own==o.id&&'dmub'.includes(x.st)).map(([x,i])=>[pn(x)+' ['+x.st+']',()=>{x.own=q.id;log(`${o.name} chuyển ${pn(x)} cho ${q.name}`);render()}]))]])]))}
+function connect(){const o=cur();if(G.acts<1)return say('Hết hành động.');const L=G.prods.map((x,i)=>[x,i]).filter(([x])=>x.own!=o.id&&x.st=='b');if(!L.length)return say('Chưa có sản phẩm Hỏng của người khác để kết nối.');
+pick('🔗 Kết nối: chọn sản phẩm Hỏng',L.map(([x,i])=>[`${pn(x)} (${G.ps[x.own].name})`,()=>pick('Dịch vụ',['r','n','c'].map(k=>[SN[k],()=>svc(i,k,o,G.ps[x.own])]))]))}
+// ===== GIAO DIỆN =====
+function board(){const X=(a,r)=>330+250*Math.cos(a*Math.PI/180),Y=a=>235+165*Math.sin(a*Math.PI/180);let s='<svg viewBox="0 0 660 500" style="width:100%"><rect width="660" height="500" rx="16" fill="#e9f0dc"/><ellipse cx="330" cy="235" rx="250" ry="165" fill="#f7f3dc" stroke="#8bb58f" stroke-width="3" stroke-dasharray="8 6"/>';
+s+='<text x="330" y="215" text-anchor="middle" font-size="26" font-weight="800" fill="#1f6b45">CIRCULAR</text><text x="330" y="245" text-anchor="middle" font-size="26" font-weight="800" fill="#1f6b45">LAW LAB</text><text x="330" y="268" text-anchor="middle" font-size="12" fill="#1f6b45">CLOSE THE LOOP</text>';
+s+='<text x="330" y="490" text-anchor="middle" font-size="11" fill="#555">Thẻ còn lại — SK '+G.dk.ev.length+' · HĐ '+G.dk.act.length+' · PL '+G.dk.law.length+' · SP '+G.dk.prod.length+' · CH '+G.dk.opp.length+'</text>';
+NODES.forEach(([k,l,ic,c,a],j)=>{const x=X(a),y=Y(a);s+=`<circle cx="${x}" cy="${y}" r="34" fill="${c}"/><text x="${x}" y="${y-2}" text-anchor="middle" font-size="18">${ic}</text><text x="${x}" y="${y+14}" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">${l}</text>`;
+if('srfc'.includes(k))s+=`<text x="${x}" y="${y+50}" text-anchor="middle" font-size="12" font-weight="700" fill="${c}">×${G.cnt[k]}</text>`;
+else G.prods.filter(p=>p.st==k).forEach((p,n)=>{s+=`<circle cx="${x-30+n%4*20}" cy="${y+48+(n/4|0)*20}" r="9" fill="${ROLES[G.ps[p.own].role][2]}" stroke="#fff"><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet"><title>${pn(p)} – ${G.ps[p.own].name}</title></circle><text x="${x-30+n%4*20}" y="${y+52+(n/4|0)*20}" text-anchor="middle" font-size="11">${T[p.t][1]}</text>`})});
+return s+'</svg><div class="w">🗑 KHỦNG HOẢNG RÁC THẢI: '+[...Array(11)].map((_,i)=>`<span style="${i<=G.waste?'background:#d33;color:#fff':''}">${i}</span>`).join('')+'</div>'}
+function bars(p){const e=eff(p);return [['cir','♻ Tuần hoàn',60,'#3aa76d'],['law','⚖ Tuân thủ PL',70,'#3b7dd8'],['imp','♥ Tác động',50,'#8a5cc0']].map(([k,l,n,c])=>`<div>${l}: <b>${e[k]}</b>/${n} ${e[k]>=n?'✅':''}<div class="bar"><i style="width:${Math.min(100,e[k])}%;background:${c}"></i><b style="left:${n}%"></b></div></div>`).join('')}
+function render(){if(G.over)return endGame();const cp=cur(),p=NET&&me>=0?G.ps[me]:cp,R=ROLES[p.role],own=(!NET||me>=0)&&p==cp,CR=ROLES[cp.role];$('hd').innerHTML=`Vòng ${G.round}/5 – ${RN[G.round-1]} · Lượt: <b>${cp.name}</b> (${CR[1]} ${CR[0]}) · Hành động: <b>${G.acts}</b>${NET?' · Phòng '+room:''}`;
+const mine=G.prods.map((x,i)=>[x,i]).filter(([x])=>x.own==p.id&&x.st!='x'&&x.st!='w'),d=G.acts<1||!own?'disabled':'';
+$('app').innerHTML=`<div><div class="c">${board()}</div><div class="c"><b>Sự kiện vòng này:</b> ${EV.find(e=>e[2]==G.mod)?.[0]||''}<br><b>Bảng điểm</b><table><tr><th></th><th>₫</th><th>♻</th><th>⚖</th><th>♥</th><th>↻</th><th>⚠</th></tr>${G.ps.map(q=>{const e=eff(q);return `<tr style="${q==cp?'background:#fff3c4':''}"><td>${ROLES[q.role][1]} ${q.name}</td><td>${e.fin}</td><td>${e.cir}</td><td>${e.law}</td><td>${e.imp}</td><td>${q.loops}</td><td>${q.risk}</td></tr>`}).join('')}</table></div><div class="c"><b>Nhật ký</b><div style="max-height:140px;overflow:auto;font-size:12px">${G.log.slice(0,25).map(x=>'<div>'+x+'</div>').join('')}</div></div></div>
+<div><div class="c" style="border-top:6px solid ${R[2]}"><h3 style="margin:0">${R[1]} ${p.name} – ${R[0]} ${NET?(own?'🎯 Đến lượt bạn!':'(chờ '+cp.name+')'):''}</h3><small>${R[7]}</small><p style="font-size:20px;margin:6px 0"><b>${p.fin}₫</b></p>${bars(p)}
+<p>Năng lực: <span class="p">🔧 ${p.cap.r}</span><span class="p">↩ ${p.cap.t}</span><span class="p">◆ ${p.cap.n}</span> <span class="p">▣ Vật liệu ${p.mat}</span><span class="p">⚠ Rủi ro ${p.risk}</span><span class="p">↻ Vòng lặp ${p.loops}</span>${p.disc?'<span class="p">sửa −'+p.disc+'</span>':''}${p.rdisc?'<span class="p">tân trang −'+p.rdisc+'</span>':''}${p.qc?'<span class="p">KT chất lượng</span>':''}${p.free?'<span class="p">GD miễn phí</span>':''}</p></div>
+<div class="c"><b>Sản phẩm đang quản lý</b>${mine.map(([x,i])=>`<div style="margin:4px 0;border-bottom:1px solid #eee"><b>${pn(x)}</b> <small>(${TG[x.t][x.v]}${x.easy?', dễ sửa':''}) giá ${T[x.t][2]} · sửa ${x.rc}</small> <span class="p">${{d:'THIẾT KẾ',m:'SẢN XUẤT',u:'SỬ DỤNG',b:'HỎNG'}[x.st]}</span><br>${x.st=='d'?`<button ${d} onclick="X('svc',${i},'m')">Sản xuất</button>`:x.st=='m'?`<button ${d} onclick="X('sell',${i})">Bán → Sử dụng</button>`:x.st=='b'?`<button ${d} onclick="X('svc',${i},'r')">🔧 Sửa</button><button ${d} onclick="X('svc',${i},'n')">🔄 Tân trang ⚖</button><button ${d} onclick="X('svc',${i},'c')">♻ Tái chế ⚖</button><button class="a" ${d} onclick="X('trash',${i})">🗑 Bỏ</button>`:''}</div>`).join('')||'<i>Không có</i>'}</div>
+<div class="c"><b>Thẻ Hành động (${p.hand.length})</b><br>${p.hand.map((c,i)=>`<div class="k"><b>${c[0]}</b><br>Chi phí ${c[1]}₫<br>${fx(c[2])}<br><button ${d} onclick="X('play',${i})">Dùng</button></div>`).join('')||'<i>Không có</i>'}</div>
+<div class="c"><button ${d} onclick="X('buy')">➕ Nhận SP (3₫)</button><button ${d} onclick="X('invest')">📈 Đầu tư (3₫)</button><button class="a" ${own?'':'disabled'} onclick="X('trade')">🤝 Giao dịch</button>${p.role==5?`<button ${d} onclick="X('connect')">🔗 Kết nối</button>`:''}<button style="background:#ff8c42" ${own?'':'disabled'} onclick="X('endTurn')">Kết thúc lượt ▶</button><br><small>Sửa/tân trang/tái chế: nếu bạn thiếu năng lực, hệ thống cho thuê người khác (trả chi phí +1₫ phí kết nối). ⚖ = rút Thẻ Pháp luật.</small></div></div>`}
+function endGame(){const all=G.waste>=10,r=G.ps.map(p=>({p,e:eff(p)}));r.forEach(x=>x.ok=!all&&x.e.cir>=60&&x.e.law>=70&&x.e.imp>=50);
+const w=r.filter(x=>x.ok).sort((a,b)=>b.e.fin-a.e.fin||b.p.loops-a.p.loops||b.e.imp-a.e.imp);$('hd').textContent='KẾT THÚC VÁN CHƠI';
+$('app').innerHTML=`<div class="c" style="grid-column:1/-1"><h2>${all?'🗑 Thanh Khủng hoảng Rác thải đạt 10 – TẤT CẢ THẤT BẠI':w.length?'🏆 Người chiến thắng: '+w[0].p.name+' ('+ROLES[w[0].p.role][0]+')':'Không ai đạt cả 3 điều kiện – tất cả thất bại'}</h2>
+<table><tr><th>Người chơi</th><th>Tài chính</th><th>♻ (≥60)</th><th>⚖ (≥70)</th><th>♥ (≥50)</th><th>Vòng lặp</th><th>Kết quả</th></tr>${r.map(x=>`<tr><td>${ROLES[x.p.role][1]} ${x.p.name}</td><td>${x.e.fin}</td><td>${x.e.cir}</td><td>${x.e.law}</td><td>${x.e.imp}</td><td>${x.p.loops}</td><td>${x.ok?'✅ Mô hình tuần hoàn hoàn thành':'❌'}</td></tr>`).join('')}</table>
+<p><small>♻ = thanh + 5×Vòng lặp · ⚖ = thanh − 5×Rủi ro · Hòa: Tài chính → Vòng lặp → Tác động.</small></p>
+<h3>💡 Kiến thức bạn đã gặp</h3><ul>${[...LEARN].map(k=>'<li>'+TIPS[k][0]+'</li>').join('')}</ul><h3>3 câu hỏi sau ván</h3><ol><li>Quyết định nào giúp tôi kiếm nhiều tiền nhất?</li><li>Quyết định nào giúp tôi tạo nhiều vòng tuần hoàn nhất?</li><li>Quyết định nào khiến tôi gặp rủi ro pháp lý lớn nhất? Nếu là doanh nghiệp thật, tôi sẽ đổi quyết định nào?</li></ol>
+<h3>QR Circular Action – hành động ngoài đời thật</h3><ul><li>Sửa thay vì vứt</li><li>Trao đổi thay vì mua mới</li><li>Đưa thiết bị điện tử hỏng đến điểm thu hồi</li><li>Xóa dữ liệu trước khi trao đổi thiết bị</li><li>Tìm hiểu tân trang thiết bị cũ</li></ul><button onclick="setup()">Chơi lại</button></div>`}
+setup();
+</script></body></html>

@@ -1,0 +1,3 @@
+<?php
+// Đổi tên thành config.php. Chỉ cần khi giao diện ở domain KHÁC với api.php (CORS).
+$cfg['origins']=['https://ten-tai-khoan.github.io'];
